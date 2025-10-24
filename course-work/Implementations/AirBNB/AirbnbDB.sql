@@ -176,7 +176,7 @@ WHERE ua.UserID = 1;
 DELETE FROM [Hosts].[HostProfile] WHERE UserID = 1;
 SELECT UserID, AccountType FROM [Users].[UserAccount] WHERE UserID = 1;
 
-SELECT * from Users.UserAccount
+
 
 -------------Hosts.HostProfile---------------------
 
@@ -229,7 +229,6 @@ VALUES
 (N'Quito', N'Pichincha', N'Ecuador', 0.0000, -78.4550);         
 GO
 
-SELECT * FROM Catalog.Location
 -------------Catalog.Location---------------------
 
 -------------Catalog.Listing---------------------
@@ -280,10 +279,6 @@ VALUES
  N'BGN');
 GO
 
-
-
-SELECT * FROM [Catalog].Listing
-
 -------------Catalog.Listing---------------------
 
 -------------Catalog.Photo---------------------
@@ -316,7 +311,6 @@ VALUES
 (2, N'https://example.com/images/listing-2/kitchen.jpg',     N'Fully equipped kitchen');
 GO
 
-select * from [Catalog].Photo
 -------------Catalog.Photo---------------------
 
 -------------Amenities.Amenity---------------------
@@ -351,7 +345,6 @@ VALUES
 (N'TV',                 N'Entertainment');
 GO
 
-SELECT * from amenities.Amenity
 -------------Amenities.Amenity---------------------
 
 -------------Amenities.ListingAmenity---------------------
@@ -622,7 +615,6 @@ INSERT INTO [Reservations].[Review] (BookingID, RatingOverall, Comment)
 VALUES (1, 4.8, N'Great stay! Super clean and excellent location.');
 GO
 
-SELECT * from Reservations.Review
 -------------Reservations.Review---------------------
 
 -------------Billing.Payment---------------------
@@ -633,7 +625,7 @@ CREATE TABLE [Billing].[Payment]
    Method NVARCHAR(40) NOT NULL,
    Amount MONEY NOT NULL
        CONSTRAINT CK_Payment_Amount_Positive CHECK (Amount > 0),
-   Currency CHAR(3) NOT NULL, -- 'BGN','EUR','USD' (по-стегнато от NVARCHAR(15))
+   Currency NVARCHAR(15) NOT NULL, 
    PaidAt DATETIME2(3) NOT NULL
        CONSTRAINT DF_Payment_PaidAt DEFAULT SYSUTCDATETIME(),
    PaymentStatus NVARCHAR(20) NOT NULL
@@ -663,6 +655,5 @@ VALUES
 (1, N'Card', 500, 'BGN', N'Succeeded'),
 (1, N'Card', 270, 'BGN', N'Succeeded');
 GO
-select * from billing.Payment
 -------------Billing.Payment---------------------
 

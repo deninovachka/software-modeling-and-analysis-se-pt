@@ -53,3 +53,6 @@ Billing.Payment – плащания по резервации.
 ```bash
 git clone https://github.com/deninovachka/software-modeling-and-analysis-se-pt.git
 cd software-modeling-and-analysis-se-pt
+```
+2) Стартиране на проект: 
+Отворете AirbnbDB.sql в SQL Managment Studio и направете Еxecute на файла
