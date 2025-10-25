@@ -59,7 +59,10 @@ GO
 INSERT INTO [Users].[UserAccount]
 (FirstName, LastName, Email, PhoneNumber, AccountType)
 VALUES
-('Ivo', 'Petkov', 'ivopetkov@gmail.com', '+359892783745', 'Host');
+(N'Aleks', N'Tomov', N'alekstomov@gmail.com', N'+359871234567', N'Guest'),
+(N'Maria', N'Ivanova', N'maria.ivanova@gmail.com', N'+359882345678', N'Host'),
+(N'Georgi', N'Dimitrov', N'georgi.dimitrov@gmail.com', N'+359883456789', N'Guest'),
+(N'Elena', N'Koleva', N'elena.koleva@gmail.com', N'+359884567890', N'Guest');
 GO
 
 ------------Procedure--------------
@@ -125,9 +128,12 @@ EXEC sys.sp_addextendedproperty
 @level1name=N'HostProfile';
 GO
 
+
 INSERT INTO [Hosts].[HostProfile]
 (UserID, About, ResponseRate, HostType)
-VALUES (1, 'Friendly host who enjoys meeting new people.', 4.8, 'Super Host');
+VALUES
+(2, N'I am a calm and responsible host.', 4.6, N'Host'),
+(3, N'I enjoy providing cozy spaces for travelers.', 4.9, N'Super Host');
 GO
 
 -------Trigger-------------
@@ -175,7 +181,6 @@ WHERE ua.UserID = 1;
 
 DELETE FROM [Hosts].[HostProfile] WHERE UserID = 1;
 SELECT UserID, AccountType FROM [Users].[UserAccount] WHERE UserID = 1;
-
 
 
 -------------Hosts.HostProfile---------------------
@@ -229,6 +234,20 @@ VALUES
 (N'Quito', N'Pichincha', N'Ecuador', 0.0000, -78.4550);         
 GO
 
+INSERT INTO [Catalog].[Location]
+(City, Region, Country, Latitude, Longitude)
+VALUES
+(N'Rome', N'Lazio', N'Italy', 41.9028, 12.4964),
+(N'Barcelona', N'Catalonia', N'Spain', 41.3851, 2.1734),
+(N'Amsterdam', N'North Holland', N'Netherlands', 52.3676, 4.9041),
+(N'Toronto', N'Ontario', N'Canada', 43.6532, -79.3832),
+(N'Cape Town', N'Western Cape', N'South Africa', -33.9249, 18.4241),
+(N'Dubai', N'Dubai', N'United Arab Emirates', 25.276987, 55.296249),
+(N'Singapore', N'Singapore', N'Singapore', 1.3521, 103.8198),
+(N'Rio de Janeiro', N'Rio de Janeiro', N'Brazil', -22.9068, -43.1729),
+(N'Tokyo', N'Tokyo', N'Japan', 35.6764, 139.6500),
+(N'Istanbul', N'Istanbul', N'Turkey', 41.0082, 28.9784);
+GO
 -------------Catalog.Location---------------------
 
 -------------Catalog.Listing---------------------
@@ -279,6 +298,97 @@ VALUES
  N'BGN');
 GO
 
+INSERT INTO [Catalog].[Listing]
+(HostID, LocationID, Title, DescriptionListing, PropertyType, MaxGuests, Bedrooms, Beds, Bathrooms, BasePrice, CleaningFee, Currency)
+VALUES
+
+(2, 2,
+ N'Central Flat near Hyde Park',
+ N'Bright apartment a short walk from Hyde Park; perfect for city breaks.',
+ N'Apartment',
+ 3, 1, 2, 1, 220, 30, N'GBP'),
+
+(3, 10,
+ N'Canal Loft with Balcony',
+ N'Minimalist loft overlooking a quiet canal; cafes and bikes at your door.',
+ N'Loft',
+ 4, 2, 3, 2, 280, 35, N'EUR'),
+
+(6, 13,
+ N'Marina View Condo',
+ N'High-rise condo with pool access and quick walk to the beach.',
+ N'Condo',
+ 5, 2, 3, 2, 600, 50, N'AED'),
+
+(7, 14,
+ N'Skyline Studio Downtown',
+ N'Compact studio with city skyline views; ideal for business travelers.',
+ N'Studio',
+ 2, 1, 1, 1, 240, 20, N'SGD'),
+
+(3, 11,
+ N'Downtown Condo by CN Tower',
+ N'Modern condo with workspace and garage; steps from entertainment district.',
+ N'Condo',
+ 4, 2, 3, 1, 260, 25, N'CAD'),
+
+(2, 12,
+ N'Sea View Family Villa',
+ N'Spacious villa with terrace and barbecue; perfect for families and groups.',
+ N'Villa',
+ 8, 4, 5, 3, 700, 60, N'ZAR'),
+
+(6, 16,
+ N'Modern Apartment in Shibuya',
+ N'Quiet unit near Shibuya Station; convenience stores and metro nearby.',
+ N'Apartment',
+ 3, 1, 2, 1, 230, 30, N'JPY'),
+
+(7, 9,
+ N'Rambla Corner Flat',
+ N'Stylish flat with balcony near La Rambla; great for remote work.',
+ N'Flat',
+ 3, 1, 2, 1, 210, 25, N'EUR');
+GO
+SET XACT_ABORT ON;
+BEGIN TRAN;
+
+DECLARE @D TABLE
+(
+    ListingID   INT PRIMARY KEY,
+    Title       NVARCHAR(200),
+    HostID      INT,
+    LocationID  INT,
+    RN          INT
+);
+
+INSERT INTO @D(ListingID, Title, HostID, LocationID, RN)
+SELECT
+    ListingID, Title, HostID, LocationID,
+    ROW_NUMBER() OVER (PARTITION BY Title, HostID, LocationID ORDER BY ListingID)
+FROM [Catalog].[Listing];
+
+DECLARE @Keepers TABLE
+(
+    Title       NVARCHAR(200),
+    HostID      INT,
+    LocationID  INT,
+    ListingID   INT PRIMARY KEY
+);
+
+INSERT INTO @Keepers(Title,HostID,LocationID,ListingID)
+SELECT Title, HostID, LocationID, ListingID
+FROM @D
+WHERE RN = 1;
+
+DECLARE @Dupes TABLE
+(
+    ListingID   INT PRIMARY KEY,
+    Title       NVARCHAR(200),
+    HostID      INT,
+    LocationID  INT
+);
+
 -------------Catalog.Listing---------------------
 
 -------------Catalog.Photo---------------------
@@ -303,14 +413,46 @@ EXEC sys.sp_addextendedproperty
 @level1name=N'Photo';
 GO
 
-INSERT INTO [Catalog].[Photo]
-(ListingID, PhotoURL, Caption)
+INSERT INTO [Catalog].[Photo] (ListingID, PhotoURL, Caption)
 VALUES
-(2, N'https://example.com/images/listing-2/living-room.jpg', N'Bright living room'),
-(2, N'https://example.com/images/listing-2/bedroom.jpg',     N'Cozy bedroom'),
-(2, N'https://example.com/images/listing-2/kitchen.jpg',     N'Fully equipped kitchen');
+
+(10, N'https://cdn.airbnb-sample.com/london/living-room.jpg', N'Bright living room with large windows'),
+(10, N'https://cdn.airbnb-sample.com/london/bedroom.jpg', N'Cozy bedroom with king-size bed'),
+(10, N'https://cdn.airbnb-sample.com/london/view.jpg', N'Beautiful view towards Hyde Park'),
+
+(11, N'https://cdn.airbnb-sample.com/amsterdam/living-area.jpg', N'Modern living area overlooking the canal'),
+(11, N'https://cdn.airbnb-sample.com/amsterdam/balcony.jpg', N'Balcony with morning sunlight'),
+(11, N'https://cdn.airbnb-sample.com/amsterdam/kitchen.jpg', N'Fully equipped open kitchen'),
+
+(12, N'https://cdn.airbnb-sample.com/dubai/lobby.jpg', N'Luxury condo lobby with marble floor'),
+(12, N'https://cdn.airbnb-sample.com/dubai/marina-view.jpg', N'Balcony with panoramic marina view'),
+(12, N'https://cdn.airbnb-sample.com/dubai/bedroom.jpg', N'Spacious bedroom with skyline view'),
+
+(13, N'https://cdn.airbnb-sample.com/singapore/skyline-night.jpg', N'Night skyline view from the window'),
+(13, N'https://cdn.airbnb-sample.com/singapore/room.jpg', N'Minimalist modern studio interior'),
+
+(14, N'https://cdn.airbnb-sample.com/toronto/living-room.jpg', N'Living room with workspace and TV'),
+(14, N'https://cdn.airbnb-sample.com/toronto/view.jpg', N'Balcony view of CN Tower'),
+(14, N'https://cdn.airbnb-sample.com/toronto/kitchen.jpg', N'Open kitchen with dining area'),
+
+(15, N'https://cdn.airbnb-sample.com/capetown/pool.jpg', N'Private pool with sea view'),
+(15, N'https://cdn.airbnb-sample.com/capetown/terrace.jpg', N'Spacious terrace with outdoor dining'),
+(15, N'https://cdn.airbnb-sample.com/capetown/living-room.jpg', N'Large living area with fireplace'),
+
+(16, N'https://cdn.airbnb-sample.com/tokyo/living-room.jpg', N'Small but stylish living room'),
+(16, N'https://cdn.airbnb-sample.com/tokyo/bedroom.jpg', N'Compact bedroom with city view'),
+(16, N'https://cdn.airbnb-sample.com/tokyo/bathroom.jpg', N'Modern Japanese bathroom'),
+
+(17, N'https://cdn.airbnb-sample.com/barcelona/living-room.jpg', N'Spacious living room with natural light'),
+(17, N'https://cdn.airbnb-sample.com/barcelona/balcony.jpg', N'Balcony overlooking La Rambla'),
+(17, N'https://cdn.airbnb-sample.com/barcelona/kitchen.jpg', N'Bright kitchen with dining table');
 GO
 
+SELECT ListingID, Title, HostID, LocationID
+FROM [Catalog].[Listing]
+ORDER BY ListingID;
+
+select * from catalog.listing
 -------------Catalog.Photo---------------------
 
 -------------Amenities.Amenity---------------------
@@ -424,68 +566,54 @@ EXEC sys.sp_addextendedproperty
 GO
 
 -----------------Trigger-----------------
-CREATE TRIGGER TR_Booking_CheckAvailability
+ALTER TRIGGER [Reservations].[TR_Booking_CheckAvailability]
 ON [Reservations].[Booking]
 INSTEAD OF INSERT
 AS
 BEGIN
     SET NOCOUNT ON;
-    DECLARE @ListingID INT, @CheckIn DATE, @CheckOut DATE, @UserID INT, @GuestCount INT;
-    SELECT 
-        @ListingID = ListingID,
-        @CheckIn = CheckIn,
-        @CheckOut = CheckOut,
-        @UserID = UserID,
-        @GuestCount = GuestCount
-    FROM inserted;
 
     IF EXISTS (
-        SELECT 1 
-        FROM [Reservations].[Booking] b
-        WHERE b.ListingID = @ListingID
-          AND (
-               (@CheckIn BETWEEN b.CheckIn AND b.CheckOut)
-               OR (@CheckOut BETWEEN b.CheckIn AND b.CheckOut)
-               OR (b.CheckIn BETWEEN @CheckIn AND @CheckOut)
-              )
+        SELECT 1
+        FROM inserted i
+        JOIN [Reservations].[Booking] b
+          ON b.ListingID = i.ListingID
+         AND i.CheckIn  <  b.CheckOut
+         AND b.CheckIn  <  i.CheckOut
     )
     BEGIN
-        RAISERROR('This listing is already booked for the selected dates.', 16, 1);
+        RAISERROR('There is an overlapping booking for at least one of the inserted rows.', 16, 1);
         ROLLBACK TRANSACTION;
         RETURN;
     END
-
-    
-
-    DECLARE @MaxGuests INT;
-    SELECT @MaxGuests = MaxGuests FROM [Catalog].[Listing] WHERE ListingID = @ListingID;
-    IF @GuestCount > @MaxGuests
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN [Catalog].[Listing] l ON l.ListingID = i.ListingID
+        WHERE i.GuestCount > l.MaxGuests
+    )
     BEGIN
-        RAISERROR('Guest count exceeds maximum allowed guests for this listing.', 16, 1);
+        RAISERROR('Guest count exceeds MaxGuests for at least one of the inserted rows.', 16, 1);
         ROLLBACK TRANSACTION;
         RETURN;
     END
 
-   
-
-    DECLARE @BasePrice MONEY, @CleaningFee MONEY, @Nights INT, @Total MONEY, @Currency NVARCHAR(10);
-    SELECT 
-        @BasePrice = BasePrice, 
-        @CleaningFee = CleaningFee,
-        @Currency = Currency
-    FROM [Catalog].[Listing]
-    WHERE ListingID = @ListingID;
-
-    SET @Nights = DATEDIFF(DAY, @CheckIn, @CheckOut);
-    SET @Total = (@Nights * @BasePrice) + @CleaningFee;
-
-    
     INSERT INTO [Reservations].[Booking]
-    (ListingID, UserID, CheckIn, CheckOut, GuestCount, Currency, TotalPrice, StatusOfBooking)
-    VALUES
-    (@ListingID, @UserID, @CheckIn, @CheckOut, @GuestCount, @Currency, @Total, N'Confirmed');
+        (ListingID, UserID, CheckIn, CheckOut, GuestCount, Currency, TotalPrice, StatusOfBooking)
+    SELECT
+        i.ListingID,
+        i.UserID,
+        i.CheckIn,
+        i.CheckOut,
+        i.GuestCount,
+        l.Currency,
+        (DATEDIFF(DAY, i.CheckIn, i.CheckOut) * l.BasePrice) + l.CleaningFee AS TotalPrice,
+        N'Confirmed' AS StatusOfBooking
+    FROM inserted i
+    JOIN [Catalog].[Listing] l ON l.ListingID = i.ListingID;
 END;
 GO
+
 -----------------Trigger-----------------
 
 -----------------Procedure------------------
@@ -512,6 +640,19 @@ BEGIN
       );
 END;
 GO
+
+EXEC [Catalog].[SearchListingsByCityAndDates]
+    @City = N'London',
+    @CheckIn = '2025-12-10',
+    @CheckOut = '2025-12-12',
+    @MinGuests = 2;
+
+EXEC [Catalog].[SearchListingsByCityAndDates]
+@City = N'Barcelona',
+@CheckIn = '2025-11-23',
+@CheckOut = '2025-11-25',
+@MinGuests = 2;
+
 ----------------Procedure------------------------
 
 ----------------Function-------------------------
@@ -533,11 +674,20 @@ BEGIN
     RETURN @Total;
 END;
 GO
+
+SELECT 
+    b.BookingID, b.ListingID, l.Title,
+    b.CheckIn, b.CheckOut,
+    [Reservations].[fn_CalcStayTotal](b.ListingID, b.CheckIn, b.CheckOut) AS CalculatedTotal,
+    b.TotalPrice AS StoredTotal, b.Currency
+FROM [Reservations].[Booking] b
+JOIN [Catalog].[Listing] l ON l.ListingID = b.ListingID
+ORDER BY b.BookingID;
 ----------------Function-------------------------
 
 ----------------Function-------------------------
 
-CREATE FUNCTION [Availability].[ufn_FreeListingsByCity]
+CREATE FUNCTION [Reservations].[ufn_FreeListingsByCity]
 (
     @City NVARCHAR(200),
     @CheckIn DATE,
@@ -548,7 +698,14 @@ RETURNS TABLE
 AS
 RETURN
 (
-    SELECT l.ListingID, l.Title, l.MaxGuests, l.BasePrice, l.CleaningFee, loc.City, loc.Country
+    SELECT 
+        l.ListingID,
+        l.Title,
+        l.MaxGuests,
+        l.BasePrice,
+        l.CleaningFee,
+        loc.City,
+        loc.Country
     FROM [Catalog].[Listing] l
     JOIN [Catalog].[Location] loc ON loc.LocationID = l.LocationID
     WHERE loc.City = @City
@@ -562,6 +719,11 @@ RETURN
       )
 );
 GO
+
+SELECT *
+FROM [Reservations].[ufn_FreeListingsByCity](N'Barcelona', '2025-11-30', '2025-12-05', 2);
+GO
+
 ----------------Function-------------------------
 
 INSERT INTO [Reservations].[Booking]
@@ -570,7 +732,25 @@ VALUES
 (2, 1, '2025-11-05', '2025-11-10', 2);
 GO
 
-SELECT * FROM [Reservations].[Booking];
+INSERT INTO [Reservations].[Booking]
+(ListingID, UserID, CheckIn, CheckOut, GuestCount)
+VALUES
+(10, 2, '2025-12-01', '2025-12-06', 2),
+
+(11, 3, '2025-11-20', '2025-11-24', 3),
+
+(12, 5, '2025-12-10', '2025-12-14', 4),
+
+(13, 9, '2025-11-28', '2025-12-01', 1),
+
+(14, 8, '2025-12-05', '2025-12-09', 2),
+
+(15, 4, '2025-12-18', '2025-12-24', 5),
+
+(16, 10, '2025-12-12', '2025-12-15', 2)
+GO
+
+
 
 INSERT INTO [Reservations].[Booking]
 (ListingID, UserID, CheckIn, CheckOut, GuestCount)
@@ -579,6 +759,9 @@ VALUES (2, 1, '2025-11-07', '2025-11-09', 2);
 INSERT INTO [Reservations].[Booking]
 (ListingID, UserID, CheckIn, CheckOut, GuestCount)
 VALUES (2, 1, '2025-12-01', '2025-12-05', 10);
+
+
+
 -------------Reservations.Booking---------------------
 
 -------------Reservations.Review---------------------
@@ -656,4 +839,6 @@ VALUES
 (1, N'Card', 270, 'BGN', N'Succeeded');
 GO
 -------------Billing.Payment---------------------
+
+
 
